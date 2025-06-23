@@ -1,4 +1,5 @@
 <template>
+    <component v-if="popup.isPopup" :is="popup.popupComponent" :type="popup.popupType">{{ popup.message }}</component>
     <div id="authentication-page">
         <div class="main">
             <!-- 注册卡片 -->
@@ -17,12 +18,17 @@
                         </svg>
                     </div>    
                     <span class="form__span"> 或使用邮箱注册</span>
-                    <input class="form__input" type="text" placeholder="邮箱" pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" required>
-                    <input class="form__input" type="password" placeholder="密码" data="passworedtype" required>
-                    <input class="form__input" type="password" placeholder="确认密码" data="passworedtype" required>
+                    <input class="form__input" type="text" v-model="register.email" placeholder="邮箱" pattern="^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$" required>
+                    <input class="form__input" type="password" v-model="register.password" placeholder="密码" data="passworedtype" minlength="8" maxlength="64" required>
+                    <input class="form__input" type="password" v-model="register.confirmPassword" placeholder="确认密码" data="passworedtype" minlength="8" maxlength="64" required>
                     <div class="verification">
-                        <input class="verification__input form__input" type="text" placeholder="验证码" required>
-                        <button class="verification__button" type="button" @click="getVerificationCode">获取验证码</button>
+                        <input class="verification__input form__input" type="text" v-model="register.code" placeholder="验证码" required>
+                        <button class="verification__button" 
+                                type="button" 
+                                @click="getRegisterCode" 
+                                :disabled="register.isSending">
+                                {{ register.codeButtonText }}
+                        </button>
                     </div>
                     <button class="button">注册</button>
                 </form>
@@ -43,12 +49,17 @@
                             <path d="M801.122375 623.063515c129.089054 42.951231 158.347424 45.280276 158.347424 45.280276V206.368114c0-78.849836-64.191998-142.731772-143.519717-142.731771H206.639802c-79.317487 0-143.583163 63.882959-143.583162 142.731771V811.863509c0 78.805834 64.246233 142.716422 143.602605 142.716422h609.29186c79.286788 0 143.519718-63.910589 143.519718-142.716422v-5.852289s-233.164411-96.585779-350.918302-152.878876c-78.948073 96.547917-180.819229 155.181315-286.582017 155.181315-178.829921 0-239.584634-155.561985-154.894789-257.958096 18.47784-22.293749 49.870828-43.636846 98.65081-55.5819 76.236312-18.632359 197.624986 11.618619 311.360354 48.943713a618.711394 618.711394 0 0 0 50.503231-122.651435H277.018709v-35.311227h180.747597v-63.237253h-218.915895v-35.339879h218.915895v-90.223885s0-15.210423 15.510252-15.210423h88.346118v105.45375h216.455867v35.320437H561.623699v63.237253h176.662559c-16.890692 68.844971-42.575678 132.220371-74.795497 187.850366 53.598732 19.249413 101.770871 37.514405 137.613195 49.459458h0.018419v-0.001023z m-520.194636-75.483158c-22.395056 2.222621-64.425312 12.06478-87.411839 32.27303-68.927859 59.700707-27.699875 168.900781 111.77369 168.900782 81.035618 0 162.054863-51.537793 225.675855-133.986597-90.480734-43.903929-167.177534-75.332732-250.019286-67.187215h-0.01842z" p-id="5538"></path>
                         </svg>
                     </div>
-                    <span class="form__span"> 或使用邮箱注册</span>
-                    <input class="form__input" type="text" placeholder="邮箱" pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" required>
-                    <input class="form__input" type="password" placeholder="密码" required>
+                    <span class="form__span"> 或使用邮箱登录</span>
+                    <input class="form__input" v-model="login.email" type="text" placeholder="邮箱" pattern="^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$" required>
+                    <input class="form__input" v-model="login.password" type="password" placeholder="密码" required>
                     <div class="verification">
-                        <input class="verification__input form__input" type="text" placeholder="验证码" required>
-                        <button class="verification__button" type="button" @click="getVerificationCode">获取验证码</button>
+                        <input class="verification__input form__input" v-model="login.code" type="text" placeholder="验证码" required>
+                        <button class="verification__button"
+                                type="button"
+                                @click="getVerificationCode"
+                                :disabled="login.isSending">
+                                {{ login.codeButtonText }}
+                        </button>
                     </div>
                     <a class="form__link" href="#forget_password">忘记密码？</a>
                     <button class="button">登录</button>
@@ -75,28 +86,211 @@
 </template>
 
 <script>
+import axios from 'axios';
+import { apiEndpoints } from '@/api/api';
+
 export default {
-  data() {
-    return {
-      isToggled: false, // 控制切换状态
-      isAnimating: false // 控制动画状态
-    };
-  },
-  methods: {
-    toggleForm() {
-      this.isAnimating = true; // 开始动画
-      setTimeout(() => {
-        this.isAnimating = false; // 结束动画
-      }, 1500);
-      this.isToggled = !this.isToggled; // 切换状态
+    data() {
+        return {
+            popup: {
+                isPopup: false, // 控制弹窗显示状态
+                popupComponent: 'Popup', //弹窗组件
+                popupType: '', //弹窗类型
+                message: '', //弹窗消息
+            },
+            register: {
+                email: '',
+                password: '',
+                confirmPassword: '',
+                code: '',
+                codeKey: '', // 用于存储发送验证码时返回的 codeKey
+                isSending: false, // 控制验证码发送状态
+                codeButtonText: '获取验证码' // 验证码按钮文本
+            },
+            login: {
+                email: '',
+                password: '',
+                code: '',
+                codeKey: '', // 用于存储发送验证码时返回的 codeKey
+                isSending: false, // 控制验证码发送状态
+                codeButtonText: '获取验证码' // 验证码按钮文本
+            },
+            isToggled: false, // 控制切换状态
+            isAnimating: false // 控制动画状态
+        };
     },
-    signIn() {
-        alert("Sign In");
-      },
-    signUp() {
-        alert("Sign Up");
+    methods: {
+        // 切换登录和注册表单
+        toggleForm() {
+            this.isAnimating = true; // 开始动画
+            setTimeout(() => {
+            this.isAnimating = false; // 结束动画
+            }, 1500);
+            this.isToggled = !this.isToggled; // 切换状态
+        },
+        // 弹出弹窗
+        async createPopup(type = 'info', message) {
+            this.popup.isPopup = true;
+            this.popup.popupType = type;
+            this.popup.message = message;
+            setTimeout(() => {
+                this.popup.isPopup = false;
+            }, 10000); // 弹窗显示 10 秒
+        },
+        // 发送注册验证码邮件
+        async getRegisterCode() {
+            // 检查邮箱格式
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(this.register.email)) {
+                this.createPopup('warning', "请输入有效的邮箱地址。");
+                return;
+            }
+
+            //验证发送按钮 60 s 倒计时
+            this.register.isSending = true;
+            let countdown = 60;
+            const interval = setInterval(() => {
+                countdown--;
+                this.register.codeButtonText = `${countdown} s`;
+                if (countdown <= 0) {
+                    clearInterval(interval);
+                    this.register.isSending = false;
+                    this.register.codeButtonText = '重新获取';
+                }
+            }, 1000);
+
+            // 请求发送验证码
+            axios(apiEndpoints.sendRegisterEmail(this.register.email))
+                .then(response => {
+                    if (response.data.code === 200) {
+                        this.register.codeKey = response.data.data; // 存储 codeKey
+                        this.createPopup('success', "验证码已发送到您的邮箱，请注意查收。");
+                    } else {
+                        this.register.isSending = false; // 停止发送状态
+                        this.register.codeButtonText = '重新获取';
+                        this.createPopup('error', "验证码发送失败，请稍后再试。");
+                        console.error(response.data.msg);
+                    }
+                });
+        },
+        // 发送登录验证码邮件
+        async getVerificationCode() {
+            // 检查邮箱格式
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(this.login.email)) {
+                this.createPopup('warning', "请输入有效的邮箱地址。");
+                return;
+            }
+
+            //验证发送按钮 60 s 倒计时
+            this.login.isSending = true;
+            let countdown = 60;
+            const interval = setInterval(() => {
+                countdown--;
+                this.login.codeButtonText = `${countdown} s`;
+                if (countdown <= 0) {
+                    clearInterval(interval);
+                    this.login.isSending = false;
+                    this.login.codeButtonText = '重新获取';
+                }
+            }, 1000);
+
+            // 请求发送验证码
+            axios(apiEndpoints.sendVerificationEmail(this.login.email, "login"))
+                .then(response => {
+                    if (response.data.code === 200) {
+                        this.login.codeKey = response.data.data; // 存储 codeKey
+                        this.createPopup('success', "验证码已发送到您的邮箱，请注意查收。");
+                    } else {
+                        this.login.isSending = false; // 停止发送状态
+                        this.login.codeButtonText = '重新获取';
+                        this.createPopup('error', "验证码发送失败，请稍后再试。");
+                        console.error(response.data.msg);
+                    }
+                });
+        },
+        // 注册
+        signUp() {
+            // 检查密码和确认密码是否匹配
+            if (this.register.password !== this.register.confirmPassword) {
+                this.createPopup('warning', "密码和确认密码不匹配，请重新输入。");
+                return;
+            }
+
+            // 检查密码强度
+            const password = this.register.password;
+            const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};:'"\\|,.<>\/?]).{8,}$/;
+            if (!passwordRegex.test(password)) {
+                this.createPopup('warning', "密码格式不正确。密码必须至少包含一个字母、一个数字和一个特殊字符，且长度至少为8位。");
+                this.register.password = '';
+                this.register.confirmPassword = '';
+                return;
+            }
+
+            // 发起注册请求
+            axios(apiEndpoints.userRegister(this.register.email, this.register.password, this.register.code, this.register.codeKey))
+                .then(response => {
+                    if (response.data.code === 200) {
+                        this.createPopup('success', "注册成功，请登录。");
+                        // 清空注册表单
+                        this.register.email = '';
+                        this.register.password = '';
+                        this.register.confirmPassword = '';
+                        this.register.code = '';
+                        this.register.codeKey = '';
+                    } else if (response.data.data === "email_already_registered") {
+                        this.createPopup('warning', "该邮箱已被注册，请尝试其他邮箱。");
+                        this.register.email = '';
+                        this.register.password = '';
+                        this.register.confirmPassword = '';
+                        this.register.code = '';
+                        this.register.codeKey = '';
+                    } else if (response.data.data = "code_error") {
+                        this.createPopup('warning', "验证码错误,请重新输入。");
+                        this.register.code = '';
+                    } else if (response.data.data === "code_expired") {
+                        this.createPopup('warning', "验证码已过期，请重新获取。");
+                        this.register.code = '';
+                    } else {
+                        this.createPopup('error', "注册失败，请稍后再试。");
+                        console.error("Registration failed:", response.data.msg);
+                    }
+                });
+        },
+        // 登录
+        signIn() {
+            axios(apiEndpoints.userLogin(this.login.email, this.login.password, this.login.code, this.login.codeKey))
+                .then(response => {
+                    if (response.data.code === 200) {
+                        this.createPopup('success', "登录成功，欢迎回来！");
+                        // 清空登录表单
+                        this.login.email = '';
+                        this.login.password = '';
+                        this.login.code = '';
+                        this.login.codeKey = '';
+                        // 记录用户登录状态
+                    } else if (response.data.data === "user_not_found") {
+                        this.createPopup('warning', "该邮箱未注册，请先注册。");
+                        this.login.email = '';
+                    } else if (response.data.data === "account_locked") {
+                        this.createPopup('warning', "您的账户已被冻结，请通过申诉解冻。");
+                        this.login.email = '';
+                    } else if (response.data.data === "password_error") {
+                        this.createPopup('warning', "密码错误，请重新输入。");
+                        this.login.password = '';
+                    } else if (response.data.data === "code_error") {
+                        this.createPopup('warning', "验证码错误，请重新输入。");
+                        this.login.code = '';
+                    } else if (response.data.data === "code_expired") {
+                        this.createPopup('warning', "验证码已过期，请重新获取。");
+                        this.login.code = '';
+                    } else {
+                        this.createPopup('error', "登录失败，请稍后再试。");
+                        console.error("Login failed:", response.data.msg);
+                    }
+                });
+        }
     }
-  }
 };
 </script>
 
@@ -221,6 +415,11 @@ export default {
     transform: translateY(5px);
     background-color: #3552b8;
     box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6), inset 0 -1px 2px rgba(255, 255, 255, 0.7);
+}
+
+.verification__button:disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
 }
 
 .form__input {

@@ -15,8 +15,8 @@ export const useActivationDataStore = defineStore('formData', {
         highSchoolName: '', // 高中名称
         hometown: '', // 家乡
         occupation: '', // 工作
-        fatherName: '', // 父亲名称
-        motherName: '' // 母亲名称
+        fatherFullName: '', // 父亲名称
+        motherFullName: '' // 母亲名称
     }),
     getters: {
         // 检查数据是否有效

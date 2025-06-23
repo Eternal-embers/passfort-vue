@@ -95,7 +95,7 @@ export default {
     const activationDataStore = useActivationDataStore();
 
     // 将 store 的属性解构为响应式引用
-    const { recoveryEmail, verificationCode, securityQuestionsData, fullName, idCardNumber, phoneNumber, highSchoolName, hometown, occupation, motherName, fatherName } = storeToRefs(activationDataStore);
+    const { recoveryEmail, verificationCode, securityQuestionsData, fullName, idCardNumber, phoneNumber, highSchoolName, hometown, occupation, motherFullName, fatherFullName } = storeToRefs(activationDataStore);
 
     // 使用 storeToRefs 将 store 的getter解构为响应式引用
     const { isActivationDataValid } = storeToRefs(activationDataStore);
@@ -110,8 +110,8 @@ export default {
       highSchoolName,           // 高中名称
       hometown,                 // 家乡
       occupation,               // 工作
-      motherName,          // 母亲姓名
-      fatherName,          // 父亲姓名
+      motherFullName,          // 母亲姓名
+      fatherFullName,          // 父亲姓名
       isActivationDataValid    // 激活数据是否有效
     };
   }

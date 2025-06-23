@@ -1,10 +1,14 @@
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-
 import App from './App.vue'
 import router from './router'
+import { createPinia } from 'pinia'
+import SvgIcon from './components/SvgIcon.vue'
+import 'virtual:svg-icons-register'; // 引入插件注册svg图标
+import Popup from './components/Popup.vue'
 
 const app = createApp(App)
-            .use(createPinia())
             .use(router)
-            .mount('#app')
+            .use(createPinia())
+            .component('SvgIcon', SvgIcon)
+            .component('Popup', Popup)
+            .mount('#app');
